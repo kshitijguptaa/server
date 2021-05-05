@@ -12,6 +12,9 @@ router.post('/updateUserProfile', jwtHelper.verifyJwtToken, ctrlUser.updateUserP
 router.get('/getAllUserList', jwtHelper.verifyJwtToken, ctrlUser.getAllUserList);
 router.post('/sendReq', jwtHelper.verifyJwtToken, ctrlUser.sendFriendReq);
 router.get('/getFriendListDetails', jwtHelper.verifyJwtToken, ctrlUser.getFriendListDetails);
+router.post('/acceptReq', jwtHelper.verifyJwtToken, ctrlUser.acceptFriendReq);
+router.post('/rejectReq', jwtHelper.verifyJwtToken, ctrlUser.rejectFriendReq);
+router.post('/unfriend', jwtHelper.verifyJwtToken, ctrlUser.unfriend);
 
 
 module.exports = router;

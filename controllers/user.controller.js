@@ -3,6 +3,7 @@ const passport = require('passport');
 const _ = require('lodash');
 const { update } = require('lodash');
 const { use } = require('../routes/index.router');
+const e = require('express');
 
 const User = mongoose.model('User');
 const UserFriend = mongoose.model('userFriends');
@@ -84,104 +85,254 @@ module.exports.getAllUserList = (req,res,next) => {
 }
 
 module.exports.sendFriendReq = (req,res,next) => {
-    UserFriend.findOne({ userReferenceId: req._id },
-        (err, user) => {
-            if (!user)
+    let reqRecieverData
+    let reqSenderData
+    //find req reciever data 
+  UserFriend.findOne({ userReferenceId: req.body.id },
+        (err, recieverData) => {
+            if (!recieverData)
                 return res.status(404).json({ status: false, message: 'User record not found.' });
-            else{
-                if(user['requestSent'].length != 0){
-                    user['requestSent'].forEach(element => {
-                        if(element.id === req.body.id) {
-                        return res.status(200).json({ status: true, user});  
-                        } else {
-                             user['requestSent'].push(req.body)
-                UserFriend.findByIdAndUpdate(user._id , user, function (err, update) {
-                    if(!update)
-                    return res.status(202).json({ status: false, message: 'User record not found.' });
+            else {
+            reqRecieverData = recieverData
+             //find req senders data
+            UserFriend.findOne({ userReferenceId: req._id },
+                (err, sendersData) => {
+                    if (!sendersData)
+                        return res.status(404).json({ status: false, message: 'User record not found.' });
                     else {
-                        UserFriend.findOne({ userReferenceId: req.body.id },
-                            (err, reqUser) => {
-                                if (!reqUser)
-                                    return res.status(404).json({ status: false, message: 'User record not found.' });
-                                else{
-                                    const json = {}
-                                    json['id'] = req._id
-                                    json['fullName'] = req.body.fullName
-                                    reqUser['friendRequest'].push(json)
-                                    UserFriend.findByIdAndUpdate(reqUser._id , reqUser, function (err, update) {
-                                       if(!update)
-                                       return res.status(202).json({ status: false, message: 'User record not found.' });
-                                       else{
-                                       UserFriend.find({}, function(err, results) { 
-                                           if(!results)
-                                           return res.status(202).json({ status: false, message: 'Users not found.' });
-                                           else
-                                           {
-                                           var filterResult =  results.filter(function(obj) {
-                                               return obj.userReferenceId == req._id;
-                                           });
-                                           return res.status(200).json({ status: true, filterResult});
-                                        }
-                                       });
-                                    }
-                                     });
-                                }
-                                    
-                            }
-                        );
-                   
-                }
-                  });
-                 
-                        }
-                    });
-                } else {
-                    user['requestSent'].push(req.body)
-                    UserFriend.findByIdAndUpdate(user._id , user, function (err, update) {
-                       
-                        if(!update)
-                        return res.status(202).json({ status: false, message: 'User record not found.' });
-                        else{
-                            UserFriend.findOne({ userReferenceId: req.body.id },
-                                (err, reqUser) => {
-                                    if (!reqUser)
-                                        return res.status(404).json({ status: false, message: 'User record not found.' });
+                    reqSenderData = sendersData
+                    if(reqRecieverData['friendRequest'].length === 0) {
+                        //update directly
+                        const json = {}
+                        json['fullName'] = reqSenderData.fullName
+                        json['id'] = reqSenderData.userReferenceId
+                        reqRecieverData['friendRequest'].push(json)
+                        UserFriend.findByIdAndUpdate(reqRecieverData._id , reqRecieverData, function (err, updateFriendReqReciever) {
+                            if(!updateFriendReqReciever)
+                            return res.status(202).json({ status: false, message: 'User record not found.' });
+                            else{
+                                reqSenderData['requestSent'].push(req.body)
+                                UserFriend.findByIdAndUpdate(reqSenderData._id , reqSenderData, function (err, updateFriendReqSender) {
+                                    if(!updateFriendReqSender)
+                                    return res.status(202).json({ status: false, message: 'User record not found.' });
                                     else{
-                                        console.log('111111', reqUser)
-                                        const json = {}
-                                        json['id'] = req._id
-                                        json['fullName'] = req.body.fullName
-                                        reqUser['friendRequest'].push(json)
-                                        UserFriend.findByIdAndUpdate(reqUser._id , reqUser, function (err, update) {
-                                            console.log('update======', update);
-                                           if(!update)
-                                           return res.status(202).json({ status: false, message: 'User record not found.' });
-                                           else {
-                                           UserFriend.find({}, function(err, results) { 
-                                               if(!results)
-                                               return res.status(202).json({ status: false, message: 'Users not found.' });
-                                               else{
-                                               var filterResult =  results.filter(function(obj) {
-                                                   return obj.userReferenceId == req._id;
-                                               });
-                                               return res.status(200).json({ status: true, filterResult});
-                                            }
-                                           });
-                                        }
-                                         });
+                                    return res.status(200).json({ status: false, updateFriendReqSender });
                                     }
+                                });
+                            }
+                          });
+                    } else {
+                        const checkReq = []
+                        reqRecieverData['friendRequest'].forEach(obj => {
+                            if(obj.id === req.body.id){
+                                checkReq.push(obj.id)
+                                // return res.status(200).json({ status: false, message: 'Friend Request Sent Already' });
+                            }
+                        });
+                        if(checkReq.length === 0) {
+                            const json = {}
+                            json['fullName'] = reqSenderData.fullName
+                            json['id'] = reqSenderData.userReferenceId
+                            reqRecieverData['friendRequest'].push(json)
+                            UserFriend.findByIdAndUpdate(reqRecieverData._id , reqRecieverData, function (err, updateFriendReqReciever) {
+                                if(!updateFriendReqReciever)
+                                return res.status(202).json({ status: false, message: 'User record not found.' });
+                                else{
+                                    if(reqSenderData['requestSent'].length === 0){
+                                        reqSenderData['requestSent'].push(req.body)
+                                        UserFriend.findByIdAndUpdate(reqSenderData._id , reqSenderData, function (err, updateFriendReqSender) {
+                                            if(!updateFriendReqSender)
+                                            return res.status(202).json({ status: false, message: 'User record not found.' });
+                                            else{
+                                            return res.status(200).json({ status: false, updateFriendReqSender });
+                                            }
+                                        });
+                                    } else {
+                                        const checkReqSender = []
+                                        reqSenderData['requestSent'].forEach(obj => {
+                                            if(obj.id === req.body.id){
+                                                checkReqSender.push(obj.id)
+                                            }
+                                        });
+                                        if(checkReqSender.length === 0){
+                                            reqSenderData['requestSent'].push(req.body)
+                                            UserFriend.findByIdAndUpdate(reqSenderData._id , reqSenderData, function (err, updateFriendReqSender) {
+                                                if(!updateFriendReqSender)
+                                                return res.status(202).json({ status: false, message: 'User record not found.' });
+                                                else{
+                                                return res.status(200).json({ status: false, updateFriendReqSender });
+                                                }
+                                            });
+                                        } else{
+                                            return res.status(200).json({ status: false, message: 'Friend Request Sent Already' });
+                                        }
                                         
+                                    }
                                 }
-                            );
+                            });
+                        } else {
+                                return res.status(200).json({ status: false, message: 'Friend Request Sent Already' });
+
+                        }
+                        
+                    }
+
+                    }
                 }
-                      });
-                }
-             
-               
+            );
             }
         }
     );
+   
+    
 
+}
+module.exports.acceptFriendReq = (req,res,next) => {
+    //acccepter side
+    UserFriend.findOne({ userReferenceId: req._id },
+        (err, accepter) => {
+            if (!accepter){
+                return res.status(404).json({ status: false, message: 'User record not found.' });
+            }
+            else{
+                let itemToDel
+                accepter.friendRequest.forEach(obj => {
+                    if(obj.id === req.body.id){
+                        itemToDel = obj
+                    }
+                });
+                var filtered = accepter.friendRequest.filter(function(el) { return el.id != itemToDel.id; });
+                accepter.friendRequest = filtered
+                accepter.friendList.push(itemToDel)
+                UserFriend.findByIdAndUpdate(accepter._id , accepter, function (err, updateAccepter) {
+                    if(!updateAccepter){
+                    return res.status(202).json({ status: false, message: 'User record not found.' });
+                    }
+                    else{
+                        UserFriend.findOne({ userReferenceId: req.body.id },
+                            (err, sender) => {
+                                if (!sender){
+                                    return res.status(404).json({ status: false, message: 'User record not found.' });
+                                }
+                                else{
+                                    let idToDel
+                                    sender.requestSent.forEach(obj => {
+                                        if(obj.id === req._id){
+                                            idToDel = obj
+                                        }
+                                    });
+                                    var filterData = sender.requestSent.filter(function(el) { return el.id != idToDel.id; });
+                                    sender.requestSent = filterData
+                                    sender.friendRequest.push(idToDel)
+                                    UserFriend.findByIdAndUpdate(sender._id , sender, function (err, updateSender) {
+                                        if(!updateSender){
+                                            return res.status(202).json({ status: false, message: 'User record not found.' });
+                                        }
+                                        else
+                                        return res.status(200).json({ status: true, updateSender });
+                                      });
+                                }
+                            }
+                        );
+                    }
+                  });
+            }
+                
+        }
+    );
+}
+
+module.exports.rejectFriendReq = (req,res,next) => {
+    UserFriend.findOne({ userReferenceId: req._id },
+        (err, toDelete) => {
+            if (!toDelete)
+                return res.status(404).json({ status: false, message: 'User record not found.' });
+            else{
+            let idToDel
+            toDelete.friendRequest.forEach(obj => {
+                if(obj.id === req.body.id){
+                    idToDel = obj
+                }
+            });
+            var afterDel = toDelete.friendRequest.filter(function(el) { return el.id != idToDel.id; });
+            toDelete.friendRequest = afterDel
+            UserFriend.findByIdAndUpdate(toDelete._id , toDelete, function (err, update) {
+                if(!update)
+                return res.status(202).json({ status: false, message: 'User record not found.' });
+                else{
+                    UserFriend.findOne({ userReferenceId: req.body.id },
+                        (err, toDeleteOther) => {
+                            if (!toDeleteOther)
+                                return res.status(404).json({ status: false, message: 'User record not found.' });
+                            else{
+                                let itemToDel
+                                toDeleteOther.requestSent.forEach(element => {
+                                    if(element.id === req._id){
+                                        itemToDel = element
+                                    }
+                                });
+                        var afterDelOther = toDeleteOther.requestSent.filter(function(el) { return el.id != itemToDel.id; });
+                                toDeleteOther.requestSent = afterDelOther
+                                User.findByIdAndUpdate(toDeleteOther._id , toDeleteOther, function (err, update) {
+                                    if(!update)
+                                    return res.status(202).json({ status: false, message: 'User record not found.' });
+                                    else
+                                    return res.status(200).json({ status: true, update });
+                                  });
+                            }
+                        }
+                    );
+                }
+              });
+            }
+        }
+    );
+}
+module.exports.unfriend = (req,res,next) => {
+    UserFriend.findOne({ userReferenceId: req._id },
+        (err, toDelete) => {
+            if (!toDelete)
+                return res.status(404).json({ status: false, message: 'User record not found.' });
+            else{
+            let idToDel
+            toDelete.friendList.forEach(obj => {
+                if(obj.id === req.body.id){
+                    idToDel = obj
+                }
+            });
+            var afterDel = toDelete.friendList.filter(function(el) { return el.id != idToDel.id; });
+            toDelete.friendList = afterDel
+            UserFriend.findByIdAndUpdate(toDelete._id , toDelete, function (err, update) {
+                if(!update)
+                return res.status(202).json({ status: false, message: 'User record not found.' });
+                else{
+                    UserFriend.findOne({ userReferenceId: req.body.id },
+                        (err, toDeleteOther) => {
+                            if (!toDeleteOther)
+                                return res.status(404).json({ status: false, message: 'User record not found.' });
+                            else{
+                                let itemToDel
+                                toDeleteOther.friendList.forEach(element => {
+                                    if(element.id === req._id){
+                                        itemToDel = element
+                                    }
+                                });
+                        var afterDelOther = toDeleteOther.friendList.filter(function(el) { return el.id != itemToDel.id; });
+                                toDeleteOther.friendList = afterDelOther
+                                User.findByIdAndUpdate(toDeleteOther._id , toDeleteOther, function (err, update) {
+                                    if(!update)
+                                    return res.status(202).json({ status: false, message: 'User record not found.' });
+                                    else
+                                    return res.status(200).json({ status: true, update });
+                                  });
+                            }
+                        }
+                    );
+                }
+              });
+            }
+        }
+    );
 }
 
 module.exports.getFriendListDetails = (req,res,next) => {
