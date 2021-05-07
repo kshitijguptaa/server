@@ -15,6 +15,8 @@ router.get('/getFriendListDetails', jwtHelper.verifyJwtToken, ctrlUser.getFriend
 router.post('/acceptReq', jwtHelper.verifyJwtToken, ctrlUser.acceptFriendReq);
 router.post('/rejectReq', jwtHelper.verifyJwtToken, ctrlUser.rejectFriendReq);
 router.post('/unfriend', jwtHelper.verifyJwtToken, ctrlUser.unfriend);
+router.post('/profileUpload', jwtHelper.verifyJwtToken, ctrlUser.profileUpload);
+router.get('/retriveImage', ctrlUser.retriveImage);
 
 
 module.exports = router;

@@ -4,9 +4,12 @@ const _ = require('lodash');
 const { update } = require('lodash');
 const { use } = require('../routes/index.router');
 const e = require('express');
-
+const multer = require('multer');
+var DIR = './uploads/';
+var upload = multer({dest: DIR}).single('photo');
 const User = mongoose.model('User');
 const UserFriend = mongoose.model('userFriends');
+// const data = require('../uploads')
 
 module.exports.register = (req, res, next) => {
     var user = new User();
@@ -39,7 +42,6 @@ module.exports.register = (req, res, next) => {
     
     
 }
-
 module.exports.authenticate = (req, res, next) => {
     // call for passport authentication
     passport.authenticate('local', (err, user, info) => {       
@@ -51,7 +53,6 @@ module.exports.authenticate = (req, res, next) => {
         else return res.status(404).json(info);
     })(req, res);
 }
-
 module.exports.userProfile = (req, res, next) =>{
     User.findOne({ _id: req._id },
         (err, user) => {
@@ -62,7 +63,6 @@ module.exports.userProfile = (req, res, next) =>{
         }
     );
 }
-
 module.exports.updateUserProfile = (req,res,next) => {
     User.findByIdAndUpdate(req._id , req.body, function (err, update) {
         if(!update)
@@ -71,7 +71,6 @@ module.exports.updateUserProfile = (req,res,next) => {
         return res.status(200).json({ status: true, update : _.pick(update,['fullName','email', 'city', 'state', 'country']) });
       });
 }
-
 module.exports.getAllUserList = (req,res,next) => {
     User.find({}, function(err, results) { 
         if(!results)
@@ -83,7 +82,6 @@ module.exports.getAllUserList = (req,res,next) => {
         return res.status(200).json({ status: true, filterResult});
     });
 }
-
 module.exports.sendFriendReq = (req,res,next) => {
     let reqRecieverData
     let reqSenderData
@@ -223,7 +221,7 @@ module.exports.acceptFriendReq = (req,res,next) => {
                                     });
                                     var filterData = sender.requestSent.filter(function(el) { return el.id != idToDel.id; });
                                     sender.requestSent = filterData
-                                    sender.friendRequest.push(idToDel)
+                                    sender.friendList.push(idToDel)
                                     UserFriend.findByIdAndUpdate(sender._id , sender, function (err, updateSender) {
                                         if(!updateSender){
                                             return res.status(202).json({ status: false, message: 'User record not found.' });
@@ -241,7 +239,6 @@ module.exports.acceptFriendReq = (req,res,next) => {
         }
     );
 }
-
 module.exports.rejectFriendReq = (req,res,next) => {
     UserFriend.findOne({ userReferenceId: req._id },
         (err, toDelete) => {
@@ -334,7 +331,6 @@ module.exports.unfriend = (req,res,next) => {
         }
     );
 }
-
 module.exports.getFriendListDetails = (req,res,next) => {
     UserFriend.find({}, function(err, results) { 
         if(!results)
@@ -345,5 +341,22 @@ module.exports.getFriendListDetails = (req,res,next) => {
         });
         return res.status(200).json({ status: true, filterResult});
     });
+}
+module.exports.profileUpload = (req,res,next) => {
+    var path = '';
+     upload(req, res, function (err) {
+        if (err) {
+          // An error occurred when uploading
+          console.log(err);
+          return res.status(422).send("an Error occured")
+        }  
+       // No error occured.
+        path = req.file.path;
+        return res.send("Upload Completed for "+path); 
+  });     
+}
+module.exports.retriveImage = (req,res,next) => {
+    const filePath = 'F:/My-Job-Portfolio/job-project/server/uploads/0a0172bd15f831f674634b3732a777dc'
+    res.sendFile(filePath);
 }
 
